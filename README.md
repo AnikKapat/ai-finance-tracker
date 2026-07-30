@@ -1,7 +1,7 @@
 # 💰 PennyPal
 
 <p align="center">
-  <img src="./public/logo.png" alt="PennyPal Logo" width="120"/>
+  <img src="./public/Screenshot 2026-07-29 220347.png" alt="PennyPal Logo" width="120"/>
 </p>
 
 <p align="center">
