@@ -129,6 +129,31 @@ Receive:
 
 ---
 
+## 📧 Email Notifications
+
+Powered by **Resend**
+
+PennyPal supports automated email notifications, including:
+
+- 📊 Monthly financial reports
+- 💰 Budget summaries
+- 🔔 Important account notifications
+- 🤖 AI-generated financial insights
+
+> **Note**
+>
+> The live demo uses the **Resend Free Plan**.
+> Due to Resend's testing restrictions, emails can only be delivered to **verified email addresses** unless a custom domain is configured.
+>
+> If you clone this project, simply:
+>
+> 1. Create a Resend account.
+> 2. Generate your own API key.
+> 3. Verify your email address (or add a custom domain).
+> 4. Update `RESEND_API_KEY` in your `.env`.
+>
+> After that, email functionality will work normally.
+
 ## 🛡️ Rate Limiting
 
 Implemented using **Arcjet**
