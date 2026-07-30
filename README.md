@@ -270,19 +270,6 @@ npm run dev
 npm run build
 ```
 
----
-
-# 📸 Screenshots
-
-> Add screenshots here
-
-- Landing Page
-- Dashboard
-- AI Insights
-- Receipt Scanner
-- Transactions
-
----
 
 # 🔒 Security
 
@@ -355,8 +342,6 @@ Haldia Institute of Technology
 GitHub:
 https://github.com/AnikKapat
 
-LinkedIn:
-(Add your LinkedIn)
 
 ---
 
