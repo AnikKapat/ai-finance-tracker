@@ -15,7 +15,6 @@
     "@clerk/nextjs": "^6.39.6",
     "@google/generative-ai": "^0.21.0",
     "@hookform/resolvers": "^3.9.1",
-    "@next/swc-win32-x64-msvc": "^16.2.12",
     "@prisma/client": "^6.0.1",
     "@radix-ui/react-checkbox": "^1.1.2",
     "@radix-ui/react-dialog": "^1.1.2",
