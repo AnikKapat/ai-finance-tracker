@@ -15,7 +15,7 @@ const Header = async () => {
         <Link href="/">
           <Image
             src={"/Screenshot 2026-07-29 220347.png"}
-            alt="Welth Logo"
+            alt="PennyPal Logo"
             width={200}
             height={60}
             className="h-12 w-auto object-contain"
@@ -24,7 +24,10 @@ const Header = async () => {
 
         <div className="hidden md:flex items-center space-x-8">
           <SignedOut>
-            <a href="#features" className="text-[#F3E7B3]/70 hover:text-[#D4AF37]">
+            <a
+              href="#features"
+              className="text-[#F3E7B3]/70 hover:text-[#D4AF37]"
+            >
               Features
             </a>
             <a
@@ -42,7 +45,10 @@ const Header = async () => {
               href="/dashboard"
               className="text-[#F3E7B3]/70 hover:text-[#D4AF37] flex items-center gap-2"
             >
-              <Button variant="outline" className="border-[#D4AF37]/40 bg-transparent text-[#F3E7B3] hover:bg-[#D4AF37]/10">
+              <Button
+                variant="outline"
+                className="border-[#D4AF37]/40 bg-transparent text-[#F3E7B3] hover:bg-[#D4AF37]/10"
+              >
                 <LayoutDashboard size={18} />
                 <span className="hidden md:inline">Dashboard</span>
               </Button>
@@ -56,7 +62,10 @@ const Header = async () => {
           </SignedIn>
           <SignedOut>
             <SignInButton forceRedirectUrl="/dashboard">
-              <Button variant="outline" className="border-[#D4AF37]/40 bg-transparent text-[#F3E7B3] hover:bg-[#D4AF37]/10">
+              <Button
+                variant="outline"
+                className="border-[#D4AF37]/40 bg-transparent text-[#F3E7B3] hover:bg-[#D4AF37]/10"
+              >
                 Login
               </Button>
             </SignInButton>

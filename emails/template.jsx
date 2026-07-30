@@ -92,7 +92,7 @@ export default function EmailTemplate({
                       <Text style={styles.text}>{category}</Text>
                       <Text style={styles.text}>${amount}</Text>
                     </div>
-                  )
+                  ),
                 )}
               </Section>
             )}
@@ -100,7 +100,7 @@ export default function EmailTemplate({
             {/* AI Insights */}
             {data?.insights && (
               <Section style={styles.section}>
-                <Heading style={styles.heading}>Welth Insights</Heading>
+                <Heading style={styles.heading}>PennyPal Insights</Heading>
                 {data.insights.map((insight, index) => (
                   <Text key={index} style={styles.text}>
                     • {insight}
@@ -110,8 +110,8 @@ export default function EmailTemplate({
             )}
 
             <Text style={styles.footer}>
-              Thank you for using Welth. Keep tracking your finances for better
-              financial health!
+              Thank you for using PennyPal. Keep tracking your finances for
+              better financial health!
             </Text>
           </Container>
         </Body>
