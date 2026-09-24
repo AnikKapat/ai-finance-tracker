@@ -342,22 +342,84 @@ export async function getUserTransactions() {
 // Scan Receipt
 export async function scanReceipt(file) {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    const { userId } = await auth();
 
-    // Convert File to ArrayBuffer
+    if (!userId) {
+      throw new Error("Unauthorized");
+    }
+
+    // Rate limit receipt scanning
+    const req = await request();
+
+    const decision = await aj.protect(req, {
+      userId,
+      requested: 1,
+    });
+
+    if (decision.isDenied()) {
+      if (decision.reason.isRateLimit()) {
+        throw new Error("Too many receipt scans. Please try again later.");
+      }
+
+      throw new Error("Request blocked");
+    }
+
+    // Validate file
+    if (!file || typeof file.arrayBuffer !== "function") {
+      throw new Error("No receipt file provided");
+    }
+
+    const allowedTypes = [
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
+
+    if (!allowedTypes.includes(file.type)) {
+      throw new Error("Only JPEG, PNG, and WebP images are supported");
+    }
+
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+
+    if (file.size > MAX_FILE_SIZE) {
+      throw new Error("Receipt image must be smaller than 5 MB");
+    }
+
+    const model = genAI.getGenerativeModel({
+      model: "gemini-1.5-flash",
+    });
+
+    // Convert File to Base64
     const arrayBuffer = await file.arrayBuffer();
-    // Convert ArrayBuffer to Base64
     const base64String = Buffer.from(arrayBuffer).toString("base64");
 
     const prompt = `
       Analyze this receipt image and extract the following information in JSON format:
+
       - Total amount (just the number)
       - Date (in ISO format)
       - Description or items purchased (brief summary)
       - Merchant/store name
-      - Suggested category (one of: housing,transportation,groceries,utilities,entertainment,food,shopping,healthcare,education,personal,travel,insurance,gifts,bills,other-expense )
-      
+      - Suggested category (one of:
+        housing,
+        transportation,
+        groceries,
+        utilities,
+        entertainment,
+        food,
+        shopping,
+        healthcare,
+        education,
+        personal,
+        travel,
+        insurance,
+        gifts,
+        bills,
+        other-expense
+      )
+
       Only respond with valid JSON in this exact format:
+
       {
         "amount": number,
         "date": "ISO date string",
@@ -366,7 +428,8 @@ export async function scanReceipt(file) {
         "category": "string"
       }
 
-      If its not a recipt, return an empty object
+      If the image is not a receipt or the required information cannot be extracted,
+      return an empty JSON object: {}
     `;
 
     const result = await model.generateContent([
@@ -381,24 +444,89 @@ export async function scanReceipt(file) {
 
     const response = await result.response;
     const text = response.text();
-    const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
+
+    const cleanedText = text
+      .replace(/```json\s*/gi, "")
+      .replace(/```\s*/g, "")
+      .trim();
+
+    let data;
 
     try {
-      const data = JSON.parse(cleanedText);
-      return {
-        amount: parseFloat(data.amount),
-        date: new Date(data.date),
-        description: data.description,
-        category: data.category,
-        merchantName: data.merchantName,
-      };
-    } catch (parseError) {
-      console.error("Error parsing JSON response:", parseError);
+      data = JSON.parse(cleanedText);
+    } catch {
+      console.error("Invalid JSON response from Gemini:", cleanedText);
       throw new Error("Invalid response format from Gemini");
     }
+
+    // Gemini explicitly determined this isn't a receipt
+    if (!data || Object.keys(data).length === 0) {
+      throw new Error("The uploaded image does not appear to be a receipt");
+    }
+
+    // Validate amount
+    const amount = Number(data.amount);
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error("Could not extract a valid receipt amount");
+    }
+
+    // Validate date
+    const date = new Date(data.date);
+
+    if (Number.isNaN(date.getTime())) {
+      throw new Error("Could not extract a valid receipt date");
+    }
+
+    // Validate category
+    const allowedCategories = [
+      "housing",
+      "transportation",
+      "groceries",
+      "utilities",
+      "entertainment",
+      "food",
+      "shopping",
+      "healthcare",
+      "education",
+      "personal",
+      "travel",
+      "insurance",
+      "gifts",
+      "bills",
+      "other-expense",
+    ];
+
+    const category = allowedCategories.includes(data.category)
+      ? data.category
+      : "other-expense";
+
+    // Validate text fields
+    const description =
+      typeof data.description === "string"
+        ? data.description.slice(0, 500)
+        : "";
+
+    const merchantName =
+      typeof data.merchantName === "string"
+        ? data.merchantName.slice(0, 200)
+        : "";
+
+    return {
+      amount,
+      date,
+      description,
+      category,
+      merchantName,
+    };
   } catch (error) {
     console.error("Error scanning receipt:", error);
-    throw new Error("Failed to scan receipt");
+
+    throw new Error(
+      error instanceof Error
+        ? error.message
+        : "Failed to scan receipt"
+    );
   }
 }
 
