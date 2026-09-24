@@ -69,11 +69,12 @@ export async function bulkDeleteTransactions(transactionIds) {
 
     // Group transactions by account to update balances
     const accountBalanceChanges = transactions.reduce((acc, transaction) => {
-      const change =
-        transaction.type === "EXPENSE"
-          ? transaction.amount
-          : -transaction.amount;
+      const amount = transaction.amount.toNumber();
+
+      const change = transaction.type === "EXPENSE" ? amount : -amount;
+
       acc[transaction.accountId] = (acc[transaction.accountId] || 0) + change;
+
       return acc;
     }, {});
 
@@ -89,7 +90,7 @@ export async function bulkDeleteTransactions(transactionIds) {
 
       // Update account balances
       for (const [accountId, balanceChange] of Object.entries(
-        accountBalanceChanges
+        accountBalanceChanges,
       )) {
         await tx.account.update({
           where: { id: accountId },
@@ -114,7 +115,10 @@ export async function bulkDeleteTransactions(transactionIds) {
 export async function updateDefaultAccount(accountId) {
   try {
     const { userId } = await auth();
-    if (!userId) throw new Error("Unauthorized");
+
+    if (!userId) {
+      throw new Error("Unauthorized");
+    }
 
     const user = await db.user.findUnique({
       where: { clerkUserId: userId },
@@ -124,27 +128,51 @@ export async function updateDefaultAccount(accountId) {
       throw new Error("User not found");
     }
 
-    // First, unset any existing default account
-    await db.account.updateMany({
-      where: {
-        userId: user.id,
-        isDefault: true,
-      },
-      data: { isDefault: false },
-    });
+    const account = await db.$transaction(async (tx) => {
+      // Make sure the account belongs to the authenticated user
+      const targetAccount = await tx.account.findUnique({
+        where: {
+          id: accountId,
+          userId: user.id,
+        },
+      });
 
-    // Then set the new default account
-    const account = await db.account.update({
-      where: {
-        id: accountId,
-        userId: user.id,
-      },
-      data: { isDefault: true },
+      if (!targetAccount) {
+        throw new Error("Account not found");
+      }
+
+      // Remove default status from all of this user's accounts
+      await tx.account.updateMany({
+        where: {
+          userId: user.id,
+          isDefault: true,
+        },
+        data: {
+          isDefault: false,
+        },
+      });
+
+      // Set the selected account as default
+      return tx.account.update({
+        where: {
+          id: targetAccount.id,
+        },
+        data: {
+          isDefault: true,
+        },
+      });
     });
 
     revalidatePath("/dashboard");
-    return { success: true, data: serializeTransaction(account) };
+
+    return {
+      success: true,
+      data: serializeDecimal(account),
+    };
   } catch (error) {
-    return { success: false, error: error.message };
+    return {
+      success: false,
+      error: error.message,
+    };
   }
 }
