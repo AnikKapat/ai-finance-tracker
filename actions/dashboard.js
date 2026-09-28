@@ -47,7 +47,8 @@ export async function getUserAccounts() {
 
     return serializedAccounts;
   } catch (error) {
-    console.error(error.message);
+    console.error("Error fetching user accounts:", error);
+    throw new Error("Failed to fetch accounts");
   }
 }
 
@@ -56,18 +57,17 @@ export async function createAccount(data) {
     const { userId } = await auth();
     if (!userId) throw new Error("Unauthorized");
 
-    // Get request data for ArcJet
     const req = await request();
 
-    // Check rate limit
     const decision = await aj.protect(req, {
       userId,
-      requested: 1, // Specify how many tokens to consume
+      requested: 1,
     });
 
     if (decision.isDenied()) {
       if (decision.reason.isRateLimit()) {
         const { remaining, reset } = decision.reason;
+
         console.error({
           code: "RATE_LIMIT_EXCEEDED",
           details: {
@@ -90,47 +90,66 @@ export async function createAccount(data) {
       throw new Error("User not found");
     }
 
-    // Convert balance to float before saving
-    const balanceFloat = parseFloat(data.balance);
-    if (isNaN(balanceFloat)) {
+    const balanceFloat = Number(data.balance);
+
+    if (!Number.isFinite(balanceFloat)) {
       throw new Error("Invalid balance amount");
     }
 
-    // Check if this is the user's first account
-    const existingAccounts = await db.account.findMany({
-      where: { userId: user.id },
-    });
-
-    // If it's the first account, make it default regardless of user input
-    // If not, use the user's preference
-    const shouldBeDefault =
-      existingAccounts.length === 0 ? true : data.isDefault;
-
-    // If this account should be default, unset other default accounts
-    if (shouldBeDefault) {
-      await db.account.updateMany({
-        where: { userId: user.id, isDefault: true },
-        data: { isDefault: false },
-      });
+    if (!data.name || typeof data.name !== "string") {
+      throw new Error("Account name is required");
     }
 
-    // Create new account
-    const account = await db.account.create({
-      data: {
-        ...data,
-        balance: balanceFloat,
-        userId: user.id,
-        isDefault: shouldBeDefault, // Override the isDefault based on our logic
-      },
+    if (!data.type || typeof data.type !== "string") {
+      throw new Error("Account type is required");
+    }
+
+    const account = await db.$transaction(async (tx) => {
+      const existingAccounts = await tx.account.findMany({
+        where: { userId: user.id },
+        select: {
+          id: true,
+          isDefault: true,
+        },
+      });
+
+      const shouldBeDefault =
+        existingAccounts.length === 0 ? true : data.isDefault === true;
+
+      if (shouldBeDefault) {
+        await tx.account.updateMany({
+          where: {
+            userId: user.id,
+            isDefault: true,
+          },
+          data: {
+            isDefault: false,
+          },
+        });
+      }
+
+      return tx.account.create({
+        data: {
+          name: data.name.trim(),
+          type: data.type,
+          balance: balanceFloat,
+          userId: user.id,
+          isDefault: shouldBeDefault,
+        },
+      });
     });
 
-    // Serialize the account before returning
-    const serializedAccount = serializeTransaction(account);
-
     revalidatePath("/dashboard");
-    return { success: true, data: serializedAccount };
+
+    return {
+      success: true,
+      data: serializeTransaction(account),
+    };
   } catch (error) {
-    throw new Error(error.message);
+    console.error("Error creating account:", error);
+    throw new Error(
+      error instanceof Error ? error.message : "Failed to create account",
+    );
   }
 }
 
