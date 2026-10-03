@@ -12,33 +12,6 @@ export async function getCurrentBudget(accountId) {
       throw new Error("Unauthorized");
     }
 
-    const user = await db.user.findUnique({
-      where: { clerkUserId: userId },
-    });
-
-    if (!user) {
-      throw new Error("User not found");
-    }
-
-    // Verify that the account belongs to the authenticated user
-    const account = await db.account.findUnique({
-      where: {
-        id: accountId,
-        userId: user.id,
-      },
-    });
-
-    if (!account) {
-      throw new Error("Account not found");
-    }
-
-    const budget = await db.budget.findUnique({
-      where: {
-        userId: user.id,
-      },
-    });
-
-    // Get current month's expenses
     const currentDate = new Date();
 
     const startOfMonth = new Date(
@@ -53,20 +26,51 @@ export async function getCurrentBudget(accountId) {
       1,
     );
 
-    const expenses = await db.transaction.aggregate({
-      where: {
-        userId: user.id,
-        accountId: account.id,
-        type: "EXPENSE",
-        date: {
-          gte: startOfMonth,
-          lt: startOfNextMonth,
+    const [account, budget, expenses] = await Promise.all([
+      // Verify account ownership
+      db.account.findFirst({
+        where: {
+          id: accountId,
+          user: {
+            clerkUserId: userId,
+          },
         },
-      },
-      _sum: {
-        amount: true,
-      },
-    });
+        select: {
+          id: true,
+        },
+      }),
+
+      // Get user's budget
+      db.budget.findFirst({
+        where: {
+          user: {
+            clerkUserId: userId,
+          },
+        },
+      }),
+
+      // Get current month's expenses
+      db.transaction.aggregate({
+        where: {
+          accountId,
+          user: {
+            clerkUserId: userId,
+          },
+          type: "EXPENSE",
+          date: {
+            gte: startOfMonth,
+            lt: startOfNextMonth,
+          },
+        },
+        _sum: {
+          amount: true,
+        },
+      }),
+    ]);
+
+    if (!account) {
+      throw new Error("Account not found");
+    }
 
     return {
       budget: budget

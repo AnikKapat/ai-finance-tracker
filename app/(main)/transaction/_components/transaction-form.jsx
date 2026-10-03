@@ -113,12 +113,12 @@ export function AddTransactionForm({
       toast.success(
         editMode
           ? "Transaction updated successfully"
-          : "Transaction created successfully"
+          : "Transaction created successfully",
       );
       reset();
       router.push(`/account/${transactionResult.data.accountId}`);
     }
-  }, [transactionResult, transactionLoading, editMode]);
+  }, [transactionResult, transactionLoading, editMode, reset, router]);
 
   const type = watch("type");
   const isRecurring = watch("isRecurring");
