@@ -538,15 +538,50 @@ function calculateNextRecurringDate(startDate, interval) {
     case "DAILY":
       date.setDate(date.getDate() + 1);
       break;
+
     case "WEEKLY":
       date.setDate(date.getDate() + 7);
       break;
-    case "MONTHLY":
+
+    case "MONTHLY": {
+      const originalDay = date.getDate();
+
+      // Move to the first day before changing the month
+      // to prevent JavaScript date overflow.
+      date.setDate(1);
       date.setMonth(date.getMonth() + 1);
+
+      // Find the last valid day of the target month.
+      const lastDayOfMonth = new Date(
+        date.getFullYear(),
+        date.getMonth() + 1,
+        0,
+      ).getDate();
+
+      date.setDate(Math.min(originalDay, lastDayOfMonth));
       break;
-    case "YEARLY":
+    }
+
+    case "YEARLY": {
+      const originalMonth = date.getMonth();
+      const originalDay = date.getDate();
+
+      // Move to the first day before changing the year
+      // to prevent date overflow.
+      date.setDate(1);
       date.setFullYear(date.getFullYear() + 1);
+
+      // Find the last valid day of the original month
+      // in the target year.
+      const lastDayOfMonth = new Date(
+        date.getFullYear(),
+        originalMonth + 1,
+        0,
+      ).getDate();
+
+      date.setDate(Math.min(originalDay, lastDayOfMonth));
       break;
+    }
   }
 
   return date;
